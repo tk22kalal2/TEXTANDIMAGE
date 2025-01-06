@@ -1,5 +1,5 @@
 const uploadImage = document.getElementById("uploadImage");
-const cropButton = document.getElementById("cropButton");
+const processButton = document.getElementById("processButton");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 let uploadedImage = null;
@@ -16,35 +16,71 @@ uploadImage.addEventListener("change", (event) => {
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-        cropButton.disabled = false;
+        processButton.disabled = false;
       };
     };
     reader.readAsDataURL(file);
   }
 });
 
-cropButton.addEventListener("click", () => {
+processButton.addEventListener("click", async () => {
   if (uploadedImage) {
-    // Assuming question starts at 20% height and options end at 80% height
-    const startY = canvas.height * 0.2; // 20% height
-    const endY = canvas.height * 0.8; // 80% height
-    const cropHeight = endY - startY;
+    const worker = Tesseract.createWorker();
 
-    // Cropping the portion between question and options
-    const croppedCanvas = document.createElement("canvas");
-    const croppedCtx = croppedCanvas.getContext("2d");
-    croppedCanvas.width = canvas.width;
-    croppedCanvas.height = cropHeight;
-    croppedCtx.drawImage(
-      uploadedImage,
-      0, startY, canvas.width, cropHeight,
-      0, 0, canvas.width, cropHeight
-    );
+    await worker.load();
+    await worker.loadLanguage("eng");
+    await worker.initialize("eng");
 
-    // Display cropped image
-    const output = document.getElementById("output");
-    const croppedImage = new Image();
-    croppedImage.src = croppedCanvas.toDataURL("image/png");
-    output.appendChild(croppedImage);
+    const { data: { words } } = await worker.recognize(uploadedImage);
+
+    // Detect question and options positions
+    const questionEndY = detectQuestionEnd(words);
+    const optionsStartY = detectOptionsStart(words);
+
+    if (questionEndY && optionsStartY) {
+      const cropHeight = optionsStartY - questionEndY;
+
+      // Cropping the region between question and options
+      const croppedCanvas = document.createElement("canvas");
+      const croppedCtx = croppedCanvas.getContext("2d");
+      croppedCanvas.width = canvas.width;
+      croppedCanvas.height = cropHeight;
+
+      croppedCtx.drawImage(
+        uploadedImage,
+        0, questionEndY, canvas.width, cropHeight,
+        0, 0, canvas.width, cropHeight
+      );
+
+      // Display cropped image
+      const output = document.getElementById("output");
+      const croppedImage = new Image();
+      croppedImage.src = croppedCanvas.toDataURL("image/png");
+      output.appendChild(croppedImage);
+    } else {
+      alert("Could not detect question or options.");
+    }
+
+    await worker.terminate();
   }
 });
+
+function detectQuestionEnd(words) {
+  // Find the last word of the question (e.g., ending with `?`)
+  for (let i = 0; i < words.length; i++) {
+    if (words[i].text.endsWith("?")) {
+      return words[i].bbox.y1; // Bottom Y-coordinate of the question
+    }
+  }
+  return null;
+}
+
+function detectOptionsStart(words) {
+  // Find the first word of the options (e.g., starting with "A.", "B.", "C.", or "D.")
+  for (let i = 0; i < words.length; i++) {
+    if (["A.", "B.", "C.", "D."].includes(words[i].text)) {
+      return words[i].bbox.y0; // Top Y-coordinate of the options
+    }
+  }
+  return null;
+}
