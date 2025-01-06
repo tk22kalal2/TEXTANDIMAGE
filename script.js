@@ -126,7 +126,7 @@ function detectQuestionEnd(words) {
   alert("Detecting the end of the question...");
   console.log("Detecting question end...");
   for (let i = 0; i < words.length; i++) {
-    if (words[i].text.endsWith("?")) {
+    if (words[i].text.endsWith("?") || words[i].text.endsWith(":")) {
       alert("Question end detected!");
       console.log("Question end detected at Y-coordinate:", words[i].bbox.y1);
       return words[i].bbox.y1; // Bottom Y-coordinate of the question
