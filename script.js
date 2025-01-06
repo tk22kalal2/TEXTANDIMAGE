@@ -6,7 +6,7 @@ let uploadedImage = null;
 
 // Handle image upload
 uploadImage.addEventListener("change", (event) => {
-  console.log("Image upload event triggered."); // Log upload event
+  alert("Uploading image..."); // Step 1: Log uploading process
 
   const file = event.target.files[0];
   if (!file) {
@@ -21,6 +21,7 @@ uploadImage.addEventListener("change", (event) => {
     img.src = e.target.result;
 
     img.onload = () => {
+      alert("Image uploaded successfully! Rendering on canvas..."); // Step 2: Render image
       console.log("Image successfully loaded."); // Log success
       uploadedImage = img;
 
@@ -29,8 +30,7 @@ uploadImage.addEventListener("change", (event) => {
       ctx.drawImage(img, 0, 0); // Draw the image on the canvas
 
       processButton.disabled = false; // Enable the process button
-      console.log("Process button enabled."); // Log button status
-      alert("Image uploaded successfully! You can now process the image.");
+      alert("Process button enabled. Ready to process the image."); // Step 3: Enable process button
     };
 
     img.onerror = () => {
@@ -56,21 +56,24 @@ processButton.addEventListener("click", async () => {
   }
 
   try {
+    alert("Starting OCR process..."); // Step 4: OCR process begins
     const worker = Tesseract.createWorker();
     console.log("Initializing Tesseract worker..."); // Log worker initialization
 
     await worker.load();
     await worker.loadLanguage("eng");
     await worker.initialize("eng");
-    console.log("Tesseract worker initialized."); // Log initialization success
+    alert("OCR initialized successfully! Reading image text..."); // Step 5: OCR initialized
 
     const { data: { words } } = await worker.recognize(uploadedImage);
+    alert("OCR completed successfully! Detecting question and options..."); // Step 6: OCR completed
     console.log("OCR completed. Words detected:", words); // Log OCR results
 
     const questionEndY = detectQuestionEnd(words);
     const optionsStartY = detectOptionsStart(words);
 
     if (questionEndY && optionsStartY) {
+      alert("Question and options detected. Cropping image between them..."); // Step 7: Detected question and options
       const cropHeight = optionsStartY - questionEndY;
 
       const croppedCanvas = document.createElement("canvas");
@@ -88,7 +91,7 @@ processButton.addEventListener("click", async () => {
       const croppedImage = new Image();
       croppedImage.src = croppedCanvas.toDataURL("image/png");
       output.appendChild(croppedImage);
-      alert("Image processed successfully! Cropped portion displayed.");
+      alert("Image cropped successfully! Showing cropped portion..."); // Step 8: Cropping done
       console.log("Cropped image displayed successfully."); // Log success
     } else {
       alert("Could not detect question or options. Make sure the format is correct.");
@@ -96,6 +99,7 @@ processButton.addEventListener("click", async () => {
     }
 
     await worker.terminate();
+    alert("OCR worker terminated successfully!"); // Step 9: Terminate worker
     console.log("Tesseract worker terminated."); // Log worker termination
   } catch (error) {
     alert("An error occurred while processing the image. Check the console for details.");
@@ -105,25 +109,31 @@ processButton.addEventListener("click", async () => {
 
 // Helper functions for detection
 function detectQuestionEnd(words) {
+  alert("Detecting the end of the question..."); // Step 10: Detect question end
   console.log("Detecting question end..."); // Log function start
   for (let i = 0; i < words.length; i++) {
     if (words[i].text.endsWith("?")) {
+      alert("Question end detected!"); // Step 11: Question end found
       console.log("Question end detected at Y-coordinate:", words[i].bbox.y1); // Log detection
       return words[i].bbox.y1; // Bottom Y-coordinate of the question
     }
   }
+  alert("No question end detected. Format may be incorrect."); // Step 12: No question found
   console.warn("No question end detected."); // Log warning
   return null;
 }
 
 function detectOptionsStart(words) {
+  alert("Detecting the start of options..."); // Step 13: Detect options start
   console.log("Detecting options start..."); // Log function start
   for (let i = 0; i < words.length; i++) {
     if (["A.", "B.", "C.", "D."].includes(words[i].text)) {
+      alert("Options start detected!"); // Step 14: Options start found
       console.log("Options start detected at Y-coordinate:", words[i].bbox.y0); // Log detection
       return words[i].bbox.y0; // Top Y-coordinate of the options
     }
   }
+  alert("No options start detected. Format may be incorrect."); // Step 15: No options found
   console.warn("No options start detected."); // Log warning
   return null;
 }
