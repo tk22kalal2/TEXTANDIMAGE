@@ -1,22 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Image and Text Extractor</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagram Extractor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f4f4f9;
+        }
+        h1 {
+            color: #333;
+        }
+        form {
+            margin: 20px 0;
+            text-align: center;
+        }
+        input[type="file"] {
+            margin: 10px 0;
+        }
+        #output {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background: #fff;
+        }
+        img {
+            max-width: 100%;
+            max-height: 300px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Image and Text Extractor</h1>
-    <input type="file" id="imageInput" accept="image/*">
+    <h1>Diagram Extractor</h1>
+    <form id="upload-form" enctype="multipart/form-data">
+        <input type="file" id="imageInput" accept="image/*" required>
+        <button type="submit">Upload & Extract Diagram</button>
+    </form>
     <div id="output">
-      <canvas id="imageCanvas"></canvas>
-      <textarea id="textOutput" placeholder="Extracted text will appear here..." readonly></textarea>
+        <h3>Extracted Diagram:</h3>
+        <img id="extracted-diagram" src="" alt="Extracted Diagram will appear here">
     </div>
-    <button id="extractButton">Extract Text & Image</button>
-  </div>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js/dist/tesseract.min.js"></script>
-  <script src="script.js"></script>
+    <script>
+        const form = document.getElementById('upload-form');
+        const extractedDiagram = document.getElementById('extracted-diagram');
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('imageInput');
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+
+            // Send to backend
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await response.json();
+            if (data.success) {
+                extractedDiagram.src = data.diagramUrl;
+            } else {
+                alert('Failed to extract diagram.');
+            }
+        });
+    </script>
 </body>
 </html>
