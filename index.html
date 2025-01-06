@@ -4,72 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Diagram Extractor</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: #f4f4f9;
-        }
-        h1 {
-            color: #333;
-        }
-        form {
-            margin: 20px 0;
-            text-align: center;
-        }
-        input[type="file"] {
-            margin: 10px 0;
-        }
-        #output {
-            margin-top: 20px;
-            border: 1px solid #ddd;
-            padding: 10px;
-            background: #fff;
-        }
-        img {
-            max-width: 100%;
-            max-height: 300px;
-            margin-top: 10px;
-        }
-    </style>
 </head>
 <body>
-    <h1>Diagram Extractor</h1>
-    <form id="upload-form" enctype="multipart/form-data">
-        <input type="file" id="imageInput" accept="image/*" required>
-        <button type="submit">Upload & Extract Diagram</button>
+    <h1>Upload an Image</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="imageInput" accept="image/*">
+        <input type="submit" value="Upload">
     </form>
-    <div id="output">
-        <h3>Extracted Diagram:</h3>
-        <img id="extracted-diagram" src="" alt="Extracted Diagram will appear here">
-    </div>
-    <script>
-        const form = document.getElementById('upload-form');
-        const extractedDiagram = document.getElementById('extracted-diagram');
-        
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const fileInput = document.getElementById('imageInput');
-            const formData = new FormData();
-            formData.append('image', fileInput.files[0]);
+    <div id="result"></div>
 
-            // Send to backend
-            const response = await fetch('/upload', {
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('imageInput').files[0];
+            const formData = new FormData();
+            formData.append('image', fileInput);
+
+            fetch('/upload', {
                 method: 'POST',
-                body: formData,
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('result').innerHTML = '<img src="' + data.imageUrl + '">';
+                } else {
+                    document.getElementById('result').innerText = 'Error: ' + data.error;
+                }
+            })
+            .catch(error => {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
             });
-            const data = await response.json();
-            if (data.success) {
-                extractedDiagram.src = data.diagramUrl;
-            } else {
-                alert('Failed to extract diagram.');
-            }
         });
     </script>
 </body>
