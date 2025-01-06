@@ -84,7 +84,7 @@ processButton.addEventListener("click", async () => {
       return;
     }
 
-    // Then, detect the end of the question based on the options start
+    // Then, detect the end of the question based on continuous text or large gaps
     const questionEndY = detectQuestionEnd(words, optionsStartY);
 
     if (questionEndY === null) {
@@ -149,16 +149,33 @@ function detectOptionsStart(words) {
 function detectQuestionEnd(words, optionsStartY) {
   alert("Detecting the end of the question...");
   console.log("Detecting question end...");
-  // We go backward through the words to find the last line of the question
-  for (let i = words.length - 1; i >= 0; i--) {
-    // Ensure we're looking for text before the options start
-    if (words[i].bbox.y1 < optionsStartY) {
-      alert("Question end detected!");
-      console.log("Question end detected at Y-coordinate:", words[i].bbox.y1);
-      return words[i].bbox.y1; // Bottom Y-coordinate of the last word of the question
+
+  let lastTextY = 0;
+  let largeGapDetected = false;
+
+  // Iterate through words and find continuous blocks
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const currentY = word.bbox.y1;
+
+    // Check for large gap (indicating a break between question and options)
+    if (currentY > optionsStartY) break; // We've already passed the options
+
+    // Check for a large vertical gap
+    if (lastTextY > 0 && (currentY - lastTextY) > 20) {
+      largeGapDetected = true;
+      break; // If a large gap is found, we stop and assume the question ends here
     }
+
+    lastTextY = currentY;
   }
-  alert("No question end detected. Format may be incorrect.");
-  console.warn("No question end detected.");
+
+  if (largeGapDetected) {
+    alert("Large vertical gap detected, assuming question end.");
+    console.log("Question end detected due to large vertical gap.");
+    return words[words.length - 1].bbox.y1; // Return the last Y-coordinate before the gap
+  }
+
+  console.warn("No clear question end detected.");
   return null;
 }
