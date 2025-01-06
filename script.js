@@ -1,39 +1,50 @@
-document.getElementById("extractButton").addEventListener("click", extractTextAndImage);
+const uploadImage = document.getElementById("uploadImage");
+const cropButton = document.getElementById("cropButton");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+let uploadedImage = null;
 
-function extractTextAndImage() {
-  const imageInput = document.getElementById("imageInput").files[0];
-  if (!imageInput) {
-    alert("Please upload an image first.");
-    return;
-  }
-
-  const canvas = document.getElementById("imageCanvas");
-  const context = canvas.getContext("2d");
-  const textOutput = document.getElementById("textOutput");
-  
-  const img = new Image();
-  const reader = new FileReader();
-
-  reader.onload = function (e) {
-    img.src = e.target.result;
-    img.onload = function () {
-      // Draw image onto the canvas
-      canvas.width = img.width;
-      canvas.height = img.height;
-      context.drawImage(img, 0, 0);
-
-      // Use Tesseract.js to extract text from the image
-      Tesseract.recognize(img.src, 'eng', {
-        logger: (info) => console.log(info), // Logs progress
-      }).then(({ data: { text } }) => {
-        textOutput.value = text.trim();
-        console.log("Extracted Text:", text);
-      }).catch((error) => {
-        console.error("Error extracting text:", error);
-        alert("Error extracting text. Please try again.");
-      });
+uploadImage.addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.src = e.target.result;
+      img.onload = () => {
+        uploadedImage = img;
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        cropButton.disabled = false;
+      };
     };
-  };
+    reader.readAsDataURL(file);
+  }
+});
 
-  reader.readAsDataURL(imageInput);
-}
+cropButton.addEventListener("click", () => {
+  if (uploadedImage) {
+    // Assuming question starts at 20% height and options end at 80% height
+    const startY = canvas.height * 0.2; // 20% height
+    const endY = canvas.height * 0.8; // 80% height
+    const cropHeight = endY - startY;
+
+    // Cropping the portion between question and options
+    const croppedCanvas = document.createElement("canvas");
+    const croppedCtx = croppedCanvas.getContext("2d");
+    croppedCanvas.width = canvas.width;
+    croppedCanvas.height = cropHeight;
+    croppedCtx.drawImage(
+      uploadedImage,
+      0, startY, canvas.width, cropHeight,
+      0, 0, canvas.width, cropHeight
+    );
+
+    // Display cropped image
+    const output = document.getElementById("output");
+    const croppedImage = new Image();
+    croppedImage.src = croppedCanvas.toDataURL("image/png");
+    output.appendChild(croppedImage);
+  }
+});
