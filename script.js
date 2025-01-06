@@ -73,11 +73,11 @@ processButton.addEventListener("click", async () => {
       return;
     }
 
-    alert("OCR completed successfully! Detecting question and options...");
+    alert("OCR completed successfully! Detecting options and question...");
     console.log("OCR completed. Words detected:", words);
 
-    const questionEndY = detectQuestionEnd(words);
     const optionsStartY = detectOptionsStart(words);
+    const questionEndY = detectQuestionEnd(words, optionsStartY);
 
     if (questionEndY && optionsStartY) {
       alert("Question and options detected. Cropping image...");
@@ -122,21 +122,6 @@ processButton.addEventListener("click", async () => {
 });
 
 // Helper functions for detection
-function detectQuestionEnd(words) {
-  alert("Detecting the end of the question...");
-  console.log("Detecting question end...");
-  for (let i = 0; i < words.length; i++) {
-    if (words[i].text.endsWith("?") || words[i].text.endsWith(":")) {
-      alert("Question end detected!");
-      console.log("Question end detected at Y-coordinate:", words[i].bbox.y1);
-      return words[i].bbox.y1; // Bottom Y-coordinate of the question
-    }
-  }
-  alert("No question end detected. Format may be incorrect.");
-  console.warn("No question end detected.");
-  return null;
-}
-
 function detectOptionsStart(words) {
   alert("Detecting the start of options...");
   console.log("Detecting options start...");
@@ -149,5 +134,20 @@ function detectOptionsStart(words) {
   }
   alert("No options start detected. Format may be incorrect.");
   console.warn("No options start detected.");
+  return null;
+}
+
+function detectQuestionEnd(words, optionsStartY) {
+  alert("Detecting the end of the question...");
+  console.log("Detecting question end...");
+  for (let i = words.length - 1; i >= 0; i--) {
+    if (words[i].bbox.y1 < optionsStartY) {
+      alert("Question end detected!");
+      console.log("Question end detected at Y-coordinate:", words[i].bbox.y1);
+      return words[i].bbox.y1; // Bottom Y-coordinate of the question
+    }
+  }
+  alert("No question end detected. Format may be incorrect.");
+  console.warn("No question end detected.");
   return null;
 }
