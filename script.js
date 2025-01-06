@@ -76,41 +76,49 @@ processButton.addEventListener("click", async () => {
     alert("OCR completed successfully! Detecting options and question...");
     console.log("OCR completed. Words detected:", words);
 
+    // First, detect the start of the options
     const optionsStartY = detectOptionsStart(words);
+
+    if (optionsStartY === null) {
+      alert("No options start detected. Ensure options are labeled correctly (e.g., A., B., C., D.).");
+      return;
+    }
+
+    // Then, detect the end of the question based on the options start
     const questionEndY = detectQuestionEnd(words, optionsStartY);
 
-    if (questionEndY && optionsStartY) {
-      alert("Question and options detected. Cropping image...");
-      const cropHeight = optionsStartY - questionEndY;
-
-      if (cropHeight <= 0) {
-        alert("Invalid cropping dimensions. Ensure the image is formatted correctly.");
-        console.error("Invalid crop height:", cropHeight);
-        return;
-      }
-
-      const croppedCanvas = document.createElement("canvas");
-      const croppedCtx = croppedCanvas.getContext("2d");
-      croppedCanvas.width = canvas.width;
-      croppedCanvas.height = cropHeight;
-
-      croppedCtx.drawImage(
-        uploadedImage,
-        0, questionEndY, canvas.width, cropHeight,
-        0, 0, canvas.width, cropHeight
-      );
-
-      const output = document.getElementById("output");
-      const croppedImage = new Image();
-      croppedImage.src = croppedCanvas.toDataURL("image/png");
-      output.appendChild(croppedImage);
-
-      alert("Image cropped successfully! Showing cropped portion...");
-      console.log("Cropped image displayed successfully.");
-    } else {
-      alert("Could not detect question or options. Make sure the format is correct.");
-      console.error("Failed to detect question or options.");
+    if (questionEndY === null) {
+      alert("No question end detected. Ensure the question text ends before the options.");
+      return;
     }
+
+    alert("Question and options detected. Cropping image...");
+    const cropHeight = optionsStartY - questionEndY;
+
+    if (cropHeight <= 0) {
+      alert("Invalid cropping dimensions. Ensure the image is formatted correctly.");
+      console.error("Invalid crop height:", cropHeight);
+      return;
+    }
+
+    const croppedCanvas = document.createElement("canvas");
+    const croppedCtx = croppedCanvas.getContext("2d");
+    croppedCanvas.width = canvas.width;
+    croppedCanvas.height = cropHeight;
+
+    croppedCtx.drawImage(
+      uploadedImage,
+      0, questionEndY, canvas.width, cropHeight,
+      0, 0, canvas.width, cropHeight
+    );
+
+    const output = document.getElementById("output");
+    const croppedImage = new Image();
+    croppedImage.src = croppedCanvas.toDataURL("image/png");
+    output.appendChild(croppedImage);
+
+    alert("Image cropped successfully! Showing cropped portion...");
+    console.log("Cropped image displayed successfully.");
 
     await worker.terminate();
     alert("OCR worker terminated successfully!");
@@ -122,11 +130,12 @@ processButton.addEventListener("click", async () => {
 });
 
 // Helper functions for detection
+
 function detectOptionsStart(words) {
   alert("Detecting the start of options...");
   console.log("Detecting options start...");
   for (let i = 0; i < words.length; i++) {
-    if (["A.", "B.", "C.", "D."].includes(words[i].text)) {
+    if (["A.", "B.", "C.", "D."].includes(words[i].text.trim())) {
       alert("Options start detected!");
       console.log("Options start detected at Y-coordinate:", words[i].bbox.y0);
       return words[i].bbox.y0; // Top Y-coordinate of the options
@@ -140,11 +149,13 @@ function detectOptionsStart(words) {
 function detectQuestionEnd(words, optionsStartY) {
   alert("Detecting the end of the question...");
   console.log("Detecting question end...");
+  // We go backward through the words to find the last line of the question
   for (let i = words.length - 1; i >= 0; i--) {
+    // Ensure we're looking for text before the options start
     if (words[i].bbox.y1 < optionsStartY) {
       alert("Question end detected!");
       console.log("Question end detected at Y-coordinate:", words[i].bbox.y1);
-      return words[i].bbox.y1; // Bottom Y-coordinate of the question
+      return words[i].bbox.y1; // Bottom Y-coordinate of the last word of the question
     }
   }
   alert("No question end detected. Format may be incorrect.");
