@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image and Text Extractor</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Image and Text Extractor</h1>
+    <input type="file" id="imageInput" accept="image/*">
+    <div id="output">
+      <canvas id="imageCanvas"></canvas>
+      <textarea id="textOutput" placeholder="Extracted text will appear here..." readonly></textarea>
+    </div>
+    <button id="extractButton">Extract Text & Image</button>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js/dist/tesseract.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
