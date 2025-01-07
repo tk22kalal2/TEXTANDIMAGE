@@ -1,3 +1,53 @@
+const uploadImage = document.getElementById("uploadImage");
+const processButton = document.getElementById("processButton");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+let uploadedImage = null;
+
+// Handle image upload
+uploadImage.addEventListener("change", (event) => {
+  alert("Uploading image...");
+
+  const file = event.target.files[0];
+  if (!file) {
+    alert("No file selected. Please upload an image.");
+    console.error("No file selected.");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.src = e.target.result;
+
+    img.onload = () => {
+      alert("Image uploaded successfully! Rendering on canvas...");
+      console.log("Image successfully loaded.");
+      uploadedImage = img;
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      processButton.disabled = false;
+      alert("Process button enabled. Ready to process the image.");
+    };
+
+    img.onerror = () => {
+      alert("Failed to load image. Please upload a valid image.");
+      console.error("Failed to load image.");
+    };
+  };
+
+  reader.onerror = () => {
+    alert("Error reading the file. Please try again.");
+    console.error("FileReader error:", reader.error);
+  };
+
+  reader.readAsDataURL(file);
+});
+
+// Handle process image
 processButton.addEventListener("click", async () => {
   if (!uploadedImage) {
     alert("No image uploaded yet. Please upload an image first.");
@@ -43,44 +93,24 @@ processButton.addEventListener("click", async () => {
     }
 
     // Validate cropping dimensions
-    if (questionEndY >= optionsStartY) {
-      alert(
-        `Invalid cropping dimensions detected. Question End (Y: ${questionEndY}) is greater than or equal to Options Start (Y: ${optionsStartY}). Please check the image formatting.`
-      );
-      console.error(
-        "Invalid cropping dimensions:",
-        { questionEndY, optionsStartY }
-      );
-      return;
+    if (questionEndY >= optionsStartY || questionEndY < 0 || optionsStartY > canvas.height) {
+      alert("Invalid cropping dimensions detected! Adjusting...");
+      console.error("Invalid cropping dimensions. QuestionEndY:", questionEndY, "OptionsStartY:", optionsStartY);
+
+      // Apply fallback logic to ensure valid cropping
+      const cropStartY = Math.max(0, questionEndY - 20); // Start slightly above detected question end
+      const cropEndY = Math.min(canvas.height, optionsStartY + 20); // End slightly below detected options start
+      if (cropEndY <= cropStartY) {
+        alert("Unable to determine valid cropping area. Please check the image.");
+        console.error("Fallback cropping dimensions are invalid.");
+        return;
+      }
+      alert("Fallback cropping applied!");
+      performCropping(cropStartY, cropEndY);
+    } else {
+      alert("Cropping with detected dimensions...");
+      performCropping(questionEndY, optionsStartY);
     }
-
-    const cropHeight = optionsStartY - questionEndY;
-
-    if (cropHeight <= 0) {
-      alert("Invalid cropping dimensions. Crop height is zero or negative.");
-      console.error("Invalid crop height:", cropHeight);
-      return;
-    }
-
-    alert("Question and options detected. Cropping image...");
-    const croppedCanvas = document.createElement("canvas");
-    const croppedCtx = croppedCanvas.getContext("2d");
-    croppedCanvas.width = canvas.width;
-    croppedCanvas.height = cropHeight;
-
-    croppedCtx.drawImage(
-      uploadedImage,
-      0, questionEndY, canvas.width, cropHeight,
-      0, 0, canvas.width, cropHeight
-    );
-
-    const output = document.getElementById("output");
-    const croppedImage = new Image();
-    croppedImage.src = croppedCanvas.toDataURL("image/png");
-    output.appendChild(croppedImage);
-
-    alert("Image cropped successfully! Showing cropped portion...");
-    console.log("Cropped image displayed successfully.");
 
     await worker.terminate();
     alert("OCR worker terminated successfully!");
@@ -91,8 +121,36 @@ processButton.addEventListener("click", async () => {
   }
 });
 
-// Helper functions for detection
+// Helper function: Perform cropping
+function performCropping(startY, endY) {
+  const cropHeight = endY - startY;
+  if (cropHeight <= 0) {
+    alert("Invalid cropping height! Ensure the image has correct question and options.");
+    console.error("Invalid crop height:", cropHeight);
+    return;
+  }
 
+  const croppedCanvas = document.createElement("canvas");
+  const croppedCtx = croppedCanvas.getContext("2d");
+  croppedCanvas.width = canvas.width;
+  croppedCanvas.height = cropHeight;
+
+  croppedCtx.drawImage(
+    uploadedImage,
+    0, startY, canvas.width, cropHeight,
+    0, 0, canvas.width, cropHeight
+  );
+
+  const output = document.getElementById("output");
+  const croppedImage = new Image();
+  croppedImage.src = croppedCanvas.toDataURL("image/png");
+  output.appendChild(croppedImage);
+
+  alert("Image cropped successfully! Showing cropped portion...");
+  console.log("Cropped image displayed successfully.");
+}
+
+// Helper function: Detect options start
 function detectOptionsStart(words) {
   alert("Detecting the start of options...");
   console.log("Detecting options start...");
@@ -108,6 +166,7 @@ function detectOptionsStart(words) {
   return null;
 }
 
+// Helper function: Detect question end
 function detectQuestionEnd(words, optionsStartY) {
   alert("Detecting the end of the question...");
   console.log("Detecting question end...");
@@ -115,18 +174,15 @@ function detectQuestionEnd(words, optionsStartY) {
   let lastTextY = 0;
   let largeGapDetected = false;
 
-  // Iterate through words and find continuous blocks
   for (let i = 0; i < words.length; i++) {
     const word = words[i];
     const currentY = word.bbox.y1;
 
-    // Check for large gap (indicating a break between question and options)
-    if (currentY > optionsStartY) break; // We've already passed the options
+    if (currentY >= optionsStartY) break; // Stop when we reach the options
 
-    // Check for a large vertical gap
     if (lastTextY > 0 && (currentY - lastTextY) > 20) {
       largeGapDetected = true;
-      break; // If a large gap is found, we stop and assume the question ends here
+      break; // Assume question ends when a large vertical gap is detected
     }
 
     lastTextY = currentY;
@@ -135,9 +191,9 @@ function detectQuestionEnd(words, optionsStartY) {
   if (largeGapDetected) {
     alert("Large vertical gap detected, assuming question end.");
     console.log("Question end detected due to large vertical gap.");
-    return lastTextY; // Return the last Y-coordinate before the gap
+    return lastTextY;
   }
 
   console.warn("No clear question end detected.");
-  return null;
+  return lastTextY;
 }
