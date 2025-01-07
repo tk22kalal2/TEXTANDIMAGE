@@ -1,53 +1,3 @@
-const uploadImage = document.getElementById("uploadImage");
-const processButton = document.getElementById("processButton");
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-let uploadedImage = null;
-
-// Handle image upload
-uploadImage.addEventListener("change", (event) => {
-  alert("Uploading image...");
-
-  const file = event.target.files[0];
-  if (!file) {
-    alert("No file selected. Please upload an image.");
-    console.error("No file selected.");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.src = e.target.result;
-
-    img.onload = () => {
-      alert("Image uploaded successfully! Rendering on canvas...");
-      console.log("Image successfully loaded.");
-      uploadedImage = img;
-
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-
-      processButton.disabled = false;
-      alert("Process button enabled. Ready to process the image.");
-    };
-
-    img.onerror = () => {
-      alert("Failed to load image. Please upload a valid image.");
-      console.error("Failed to load image.");
-    };
-  };
-
-  reader.onerror = () => {
-    alert("Error reading the file. Please try again.");
-    console.error("FileReader error:", reader.error);
-  };
-
-  reader.readAsDataURL(file);
-});
-
-// Handle process image
 processButton.addEventListener("click", async () => {
   if (!uploadedImage) {
     alert("No image uploaded yet. Please upload an image first.");
@@ -92,15 +42,27 @@ processButton.addEventListener("click", async () => {
       return;
     }
 
-    alert("Question and options detected. Cropping image...");
+    // Validate cropping dimensions
+    if (questionEndY >= optionsStartY) {
+      alert(
+        `Invalid cropping dimensions detected. Question End (Y: ${questionEndY}) is greater than or equal to Options Start (Y: ${optionsStartY}). Please check the image formatting.`
+      );
+      console.error(
+        "Invalid cropping dimensions:",
+        { questionEndY, optionsStartY }
+      );
+      return;
+    }
+
     const cropHeight = optionsStartY - questionEndY;
 
     if (cropHeight <= 0) {
-      alert("Invalid cropping dimensions. Ensure the image is formatted correctly.");
+      alert("Invalid cropping dimensions. Crop height is zero or negative.");
       console.error("Invalid crop height:", cropHeight);
       return;
     }
 
+    alert("Question and options detected. Cropping image...");
     const croppedCanvas = document.createElement("canvas");
     const croppedCtx = croppedCanvas.getContext("2d");
     croppedCanvas.width = canvas.width;
@@ -173,7 +135,7 @@ function detectQuestionEnd(words, optionsStartY) {
   if (largeGapDetected) {
     alert("Large vertical gap detected, assuming question end.");
     console.log("Question end detected due to large vertical gap.");
-    return words[words.length - 1].bbox.y1; // Return the last Y-coordinate before the gap
+    return lastTextY; // Return the last Y-coordinate before the gap
   }
 
   console.warn("No clear question end detected.");
